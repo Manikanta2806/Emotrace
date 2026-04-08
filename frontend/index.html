@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EmoTrace — Emotion-Cause Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d12;--bg2:#121218;--bg3:#181820;--card:#1c1c26;--card2:#21212d;
+  --border:#272735;--border2:#333345;
+  --text:#eeeeff;--muted:#8585a0;--subtle:#4a4a62;
+  --purple:#a78bfa;--purple-d:#6d28d9;--purple-glow:rgba(109,40,217,.22);
+  --teal:#34d399;--teal-d:#047857;
+  --coral:#fb7185;--amber:#fbbf24;--blue:#60a5fa;--green:#4ade80;
+  --mono:'DM Mono',monospace;--serif:'DM Serif Display',serif;
+  --sans:'Plus Jakarta Sans',sans-serif;
+  --radius:14px;--radius-sm:8px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;font-size:15px}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 2.5rem;border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+  background:rgba(13,13,18,.92);backdrop-filter:blur(14px);
+}
+.logo{display:flex;align-items:center;gap:.7rem}
+.logo-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--purple-d),#4f46e5);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.logo-name{font-family:var(--serif);font-size:1.3rem}
+.logo-tag{font-size:10.5px;color:var(--subtle);font-family:var(--mono);margin-top:-1px}
+.nav-pills{display:flex;gap:.4rem}
+.pill{
+  padding:.38rem .95rem;border-radius:20px;font-size:12.5px;font-weight:500;cursor:pointer;
+  border:1px solid var(--border2);background:transparent;color:var(--muted);transition:all .18s;
+}
+.pill:hover{background:var(--card);color:var(--text)}
+.pill.active{background:var(--purple-d);border-color:var(--purple);color:#fff}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:3.5rem 1.5rem 2rem;position:relative;overflow:hidden}
+.hero::before{
+  content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  width:560px;height:280px;
+  background:radial-gradient(ellipse,var(--purple-glow) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hero h1{font-family:var(--serif);font-size:clamp(1.8rem,4.5vw,3rem);line-height:1.15;margin-bottom:.8rem}
+.hero h1 em{color:var(--purple);font-style:italic}
+.hero p{color:var(--muted);font-size:.92rem;max-width:480px;margin:0 auto 2rem;line-height:1.75}
+
+/* ── MODEL TABS ── */
+.model-tabs{
+  display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  width:fit-content;margin:0 auto 2.5rem;background:var(--bg2);
+}
+.model-tab{
+  padding:.55rem 1.4rem;font-size:13px;font-weight:500;cursor:pointer;
+  border:none;background:transparent;color:var(--muted);transition:all .18s;
+}
+.model-tab.active{background:var(--card2);color:var(--text)}
+.model-tab:not(:last-child){border-right:1px solid var(--border)}
+
+/* ── CONTAINER ── */
+.container{max-width:820px;margin:0 auto;padding:0 1.5rem 5rem}
+
+/* ── INPUT CARD ── */
+.input-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.4rem;margin-bottom:1.25rem;
+}
+.field-label{
+  font-size:10.5px;font-family:var(--mono);letter-spacing:.09em;
+  color:var(--subtle);text-transform:uppercase;margin-bottom:.65rem;
+}
+textarea{
+  width:100%;background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:.9rem 1.1rem;color:var(--text);
+  font-family:var(--sans);font-size:.9rem;line-height:1.7;resize:vertical;
+  min-height:110px;outline:none;transition:border-color .18s;font-weight:300;
+}
+textarea:focus{border-color:var(--purple)}
+textarea::placeholder{color:var(--subtle)}
+
+.input-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.9rem;gap:.75rem;flex-wrap:wrap}
+.gt-row{display:flex;align-items:center;gap:.6rem;flex:1;min-width:0}
+.gt-label{font-size:11px;color:var(--subtle);font-family:var(--mono);white-space:nowrap}
+input[type=text]{
+  flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:.48rem .85rem;color:var(--text);
+  font-family:var(--sans);font-size:.82rem;outline:none;transition:border-color .18s;
+}
+input[type=text]:focus{border-color:var(--purple)}
+input[type=text]::placeholder{color:var(--subtle)}
+.run-btn{
+  padding:.6rem 1.6rem;border-radius:9px;
+  background:linear-gradient(135deg,var(--purple-d),#4f46e5);
+  border:none;color:#fff;font-weight:600;font-size:.88rem;cursor:pointer;
+  transition:all .18s;white-space:nowrap;box-shadow:0 4px 18px rgba(109,40,217,.3);
+  font-family:var(--sans);
+}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 26px rgba(109,40,217,.45)}
+.run-btn:active{transform:none}
+.run-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* ── EXAMPLES ── */
+.examples{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1.2rem;align-items:center}
+.ex-chip{
+  font-size:11.5px;padding:.3rem .8rem;border-radius:16px;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .18s;font-family:var(--mono);
+}
+.ex-chip:hover{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.07)}
+
+/* ── STATUS ── */
+.status{text-align:center;padding:2.5rem;color:var(--muted);font-family:var(--mono);font-size:.83rem}
+.spinner{
+  display:inline-block;width:16px;height:16px;
+  border:2px solid var(--border2);border-top-color:var(--purple);
+  border-radius:50%;animation:spin .85s linear infinite;margin-right:.5rem;vertical-align:middle;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════
+   VERDICT CARD  — the main output
+══════════════════════════════════ */
+.results{display:flex;flex-direction:column;gap:1.1rem;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* Verdict card — top-level clean result */
+.verdict-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+}
+.verdict-header{
+  padding:1.1rem 1.3rem .9rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;
+}
+.pipeline-badge{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;
+  padding:.28rem .75rem;border-radius:16px;font-weight:500;text-transform:uppercase;
+}
+.badge-base{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.22)}
+.badge-enhanced{background:rgba(52,211,153,.1);color:var(--teal);border:1px solid rgba(52,211,153,.22)}
+
+/* emotion chip */
+.emotion-chip{
+  display:inline-flex;align-items:center;gap:.45rem;
+  padding:.32rem .9rem;border-radius:7px;font-weight:600;font-size:.9rem;
+}
+/* ── Joy family ── */
+.emotion-joy,.emotion-happiness,.emotion-happy,
+.emotion-excitement,.emotion-elation,.emotion-contentment
+  {background:rgba(74,222,128,.13);color:var(--green);border:1px solid rgba(74,222,128,.28)}
+.emotion-pride,.emotion-gratitude
+  {background:rgba(52,211,153,.13);color:#2dd4bf;border:1px solid rgba(52,211,153,.28)}
+.emotion-relief
+  {background:rgba(110,231,183,.13);color:#6ee7b7;border:1px solid rgba(110,231,183,.28)}
+/* ── Sadness family ── */
+.emotion-sadness,.emotion-grief,.emotion-despair,.emotion-loneliness
+  {background:rgba(96,165,250,.13);color:var(--blue);border:1px solid rgba(96,165,250,.28)}
+.emotion-disappointment,.emotion-nostalgia
+  {background:rgba(147,197,253,.13);color:#93c5fd;border:1px solid rgba(147,197,253,.28)}
+/* ── Anger family ── */
+.emotion-anger,.emotion-rage,.emotion-resentment
+  {background:rgba(251,113,133,.13);color:var(--coral);border:1px solid rgba(251,113,133,.28)}
+.emotion-frustration,.emotion-irritation,.emotion-contempt,.emotion-envy
+  {background:rgba(253,164,175,.13);color:#fda4af;border:1px solid rgba(253,164,175,.28)}
+/* ── Fear family ── */
+.emotion-fear,.emotion-dread,.emotion-anxiety
+  {background:rgba(167,139,250,.13);color:var(--purple);border:1px solid rgba(167,139,250,.28)}
+.emotion-worry,.emotion-shame,.emotion-guilt,.emotion-embarrassment
+  {background:rgba(196,181,253,.13);color:#c4b5fd;border:1px solid rgba(196,181,253,.28)}
+/* ── Surprise family ── */
+.emotion-surprise,.emotion-shock,.emotion-awe
+  {background:rgba(251,191,36,.13);color:var(--amber);border:1px solid rgba(251,191,36,.28)}
+.emotion-confusion
+  {background:rgba(253,211,77,.13);color:#fcd34d;border:1px solid rgba(253,211,77,.28)}
+/* ── Disgust ── */
+.emotion-disgust
+  {background:rgba(196,132,252,.13);color:#c084fc;border:1px solid rgba(196,132,252,.28)}
+/* ── Neutral / fallback ── */
+.emotion-neutral{background:rgba(136,135,160,.1);color:var(--muted);border:1px solid rgba(136,135,160,.2)}
+.emotion-default{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.25)}
+
+/* ── Rich emotion panel ── */
+.rich-emotion-panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:.85rem 1rem;margin-bottom:.9rem;display:grid;
+  grid-template-columns:1fr 1fr;gap:.65rem .9rem;
+}
+.rep-item{display:flex;flex-direction:column;gap:.25rem}
+.rep-label{font-size:9.5px;font-family:var(--mono);letter-spacing:.09em;color:var(--subtle);text-transform:uppercase}
+.rep-value{font-size:.84rem;color:var(--text);font-weight:500}
+.valence-bar{display:flex;align-items:center;gap:.5rem;margin-top:.15rem}
+.valence-track{flex:1;height:4px;background:var(--border);border-radius:3px;position:relative}
+.valence-fill{height:100%;border-radius:3px;position:absolute}
+.intensity-bar{height:4px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:.2rem}
+.intensity-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--purple-d),var(--teal));transition:width .5s}
+.secondary-chips{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.25rem}
+.sec-chip{font-size:.72rem;padding:.15rem .55rem;border-radius:12px;font-weight:500;
+  background:var(--card2);border:1px solid var(--border2);color:var(--muted)}
+
+/* verdict body — the clean, investigator-visible part */
+.verdict-body{padding:1.2rem 1.3rem}
+
+.verdict-section{margin-bottom:1.1rem}
+.verdict-section:last-child{margin-bottom:0}
+.vs-label{
+  font-size:10px;font-family:var(--mono);letter-spacing:.1em;
+  color:var(--subtle);text-transform:uppercase;margin-bottom:.5rem;
+}
+
+.cause-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:.8rem 1rem;font-size:.9rem;color:var(--text);line-height:1.65;
+  border-left:3px solid var(--purple);
+}
+
+.reason-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:.8rem 1rem;font-size:.88rem;color:var(--muted);line-height:1.7;
+  font-style:italic;
+}
+
+/* confidence bar row */
+.conf-row{display:flex;align-items:center;gap:.9rem;margin-top:.85rem}
+.conf-label-text{font-size:11px;color:var(--subtle);font-family:var(--mono);min-width:130px}
+.conf-bar{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.conf-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--purple-d),var(--teal));transition:width .55s ease}
+.conf-val{font-family:var(--mono);font-size:12px;color:var(--text);min-width:44px;text-align:right}
+
+/* ══════════════════════════════════
+   DISCLOSURE PANEL  (the "under the hood" section)
+   Hidden by default. Revealed on click.
+══════════════════════════════════ */
+.disclosure-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1.3rem;
+  background:transparent;border:none;border-top:1px solid var(--border);
+  color:var(--muted);cursor:pointer;font-family:var(--sans);font-size:.8rem;
+  transition:all .18s;text-align:left;
+}
+.disclosure-toggle:hover{background:var(--bg2);color:var(--text)}
+.disclosure-toggle.open{color:var(--purple)}
+.disclosure-chevron{
+  font-size:11px;transition:transform .25s;
+  color:var(--subtle);font-family:var(--mono);
+}
+.disclosure-chevron.open{transform:rotate(180deg);color:var(--purple)}
+
+.disclosure-panel{
+  display:none;border-top:1px solid var(--border);
+  background:var(--bg2);
+  animation:fadeDown .2s ease;
+}
+.disclosure-panel.open{display:block}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.disclosure-inner{padding:1.1rem 1.3rem}
+
+/* IC table inside disclosure */
+.ic-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+.ic-table th{
+  font-size:10px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--subtle);padding:.5rem .7rem;text-align:left;border-bottom:1px solid var(--border);
+}
+.ic-table td{
+  padding:.65rem .7rem;border-bottom:1px solid var(--border);
+  font-size:.78rem;color:var(--muted);vertical-align:top;line-height:1.55;
+}
+.ic-table tr:last-child td{border-bottom:none}
+.ic-table tr.ic-best td{background:rgba(167,139,250,.05)}
+
+.rank-dot{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  background:var(--card2);border:1px solid var(--border2);color:var(--subtle);
+  flex-shrink:0;
+}
+.rank-dot.r1{background:rgba(167,139,250,.2);border-color:var(--purple);color:var(--purple)}
+.rank-dot.r1-teal{background:rgba(52,211,153,.2);border-color:var(--teal);color:var(--teal)}
+
+.quality-badge{
+  display:inline-block;font-size:9.5px;font-family:var(--mono);font-weight:500;
+  padding:.18rem .5rem;border-radius:4px;
+}
+.q-strong{background:rgba(52,211,153,.12);color:var(--teal);border:1px solid rgba(52,211,153,.25)}
+.q-weak{background:rgba(136,135,160,.1);color:var(--subtle);border:1px solid var(--border)}
+
+.mini-score-bar{height:3px;border-radius:2px;background:var(--border);margin-top:.4rem}
+.mini-score-fill{height:100%;border-radius:2px}
+
+/* Score breakdown grid (dimension scores) */
+.dim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-top:.75rem}
+.dim-cell{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:.65rem .75rem}
+.dim-name{font-size:10px;font-family:var(--mono);color:var(--subtle);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+.dim-val{font-family:var(--mono);font-size:.9rem;color:var(--text)}
+.dim-bar{height:3px;border-radius:2px;background:var(--border);margin-top:.45rem}
+.dim-fill{height:100%;border-radius:2px}
+
+/* Reasoning trace */
+.trace-box{
+  background:var(--card);border:1px solid var(--border);border-radius:7px;
+  padding:.8rem 1rem;font-family:var(--mono);font-size:.72rem;
+  color:var(--muted);line-height:1.7;white-space:pre-wrap;word-break:break-word;
+  margin-top:.75rem;
+}
+
+/* ══════════════════════════════════
+   COMPARE VIEW
+══════════════════════════════════ */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:680px){.compare-grid{grid-template-columns:1fr}}
+
+.winner-banner{
+  border-radius:var(--radius);padding:.9rem 1.2rem;margin-bottom:1rem;
+  display:flex;align-items:center;gap:.9rem;
+}
+.winner-enhanced{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.22)}
+.winner-base{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.22)}
+.winner-tie{background:rgba(136,135,160,.07);border:1px solid var(--border2)}
+.winner-icon{font-size:1.4rem}
+.winner-text h3{font-size:.9rem;font-weight:600;margin-bottom:.18rem}
+.winner-text p{font-size:.78rem;color:var(--muted)}
+
+.metrics-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.1rem 1.2rem;margin-bottom:1rem;
+}
+.metrics-title{font-size:13px;font-weight:600;margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
+.metric-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.82rem;
+}
+.metric-row:last-child{border-bottom:none}
+.metric-name{color:var(--muted)}
+.metric-vals{display:flex;align-items:center;gap:.8rem}
+.metric-val{font-family:var(--mono);font-weight:500;font-size:.82rem}
+.metric-delta{font-family:var(--mono);font-size:10.5px;padding:.14rem .38rem;border-radius:4px}
+.delta-pos{background:rgba(52,211,153,.1);color:var(--teal)}
+.delta-neg{background:rgba(251,113,133,.1);color:var(--coral)}
+.delta-neu{background:rgba(136,135,160,.1);color:var(--subtle)}
+
+.errors-card{
+  background:rgba(251,113,133,.04);border:1px solid rgba(251,113,133,.18);
+  border-radius:9px;padding:.9rem;margin-bottom:.9rem;
+}
+.errors-title{font-size:11px;font-family:var(--mono);color:var(--coral);margin-bottom:.5rem}
+.error-item{font-size:.8rem;color:var(--muted);padding:.22rem 0;padding-left:.7rem;position:relative}
+.error-item::before{content:'·';position:absolute;left:0;color:var(--coral)}
+
+/* ── ARCHITECTURE VIEW ── */
+.arch-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.3rem;margin-bottom:1rem;
+}
+.arch-step{
+  display:flex;gap:.9rem;padding:.65rem 0;border-bottom:1px solid var(--border);
+  align-items:flex-start;
+}
+.arch-step:last-child{border-bottom:none}
+.arch-num{
+  width:26px;height:26px;border-radius:7px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;font-weight:500;
+}
+.arch-num-base{background:rgba(96,165,250,.13);color:var(--blue);border:1px solid rgba(96,165,250,.28)}
+.arch-num-enhanced{background:rgba(52,211,153,.13);color:var(--teal);border:1px solid rgba(52,211,153,.28)}
+.arch-num-new{background:rgba(251,191,36,.13);color:var(--amber);border:1px solid rgba(251,191,36,.28)}
+.arch-info h4{font-size:.88rem;font-weight:600;margin-bottom:.22rem}
+.arch-info p{font-size:.8rem;color:var(--muted);line-height:1.65}
+.new-badge{
+  display:inline-block;font-size:9.5px;font-family:var(--mono);
+  background:rgba(251,191,36,.13);color:var(--amber);
+  border:1px solid rgba(251,191,36,.28);border-radius:4px;
+  padding:.08rem .38rem;margin-left:.4rem;vertical-align:middle;
+}
+
+/* ── SECTION LABEL ── */
+.section-label{
+  font-size:10.5px;font-family:var(--mono);letter-spacing:.1em;
+  color:var(--subtle);text-transform:uppercase;margin-bottom:.7rem;padding-left:.15rem;
+}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);padding:1.2rem 2.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  color:var(--subtle);font-size:11.5px;font-family:var(--mono);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">🧠</div>
+    <div>
+      <div class="logo-name">EmoTrace</div>
+      <div class="logo-tag">Emotion–Cause Extraction System</div>
+    </div>
+  </div>
+  <nav class="nav-pills">
+    <button class="pill active" onclick="showView('analyze')">Analyze</button>
+    <button class="pill" onclick="showView('compare')">Compare</button>
+    <button class="pill" onclick="showView('arch')">Architecture</button>
+  </nav>
+</header>
+
+<!-- ══════════════ ANALYZE VIEW ══════════════ -->
+<div id="view-analyze">
+  <div class="hero">
+    <h1>Understand <em>why</em> emotions happen</h1>
+    <p>Enter a conversation. EmoTrace detects the emotion, finds its cause, and explains the underlying reasoning — with full transparency on demand.</p>
+    <div class="model-tabs">
+      <button class="model-tab active" id="tab-base" onclick="setMode('base')">Base Model</button>
+      <button class="model-tab" id="tab-enhanced" onclick="setMode('enhanced')">Enhanced Model</button>
+    </div>
+  </div>
+  <div class="container">
+    <div class="examples">
+      <span style="font-size:11px;color:var(--subtle);font-family:var(--mono);align-self:center;margin-right:.2rem">try →</span>
+      <div class="ex-chip" onclick="setExample(0)">exam failure → sadness</div>
+      <div class="ex-chip" onclick="setExample(1)">promotion → joy</div>
+      <div class="ex-chip" onclick="setExample(2)">argument → anger</div>
+      <div class="ex-chip" onclick="setExample(3)">multi-turn dialogue</div>
+    </div>
+    <div class="input-card">
+      <div class="field-label">conversation input</div>
+      <textarea id="main-input" placeholder="Enter a sentence or dialogue&#10;&#10;e.g. &quot;I studied hard but failed the exam and feel so sad&quot;&#10;&#10;Or dialogue format:&#10;Alice: I can't believe what happened.&#10;Bob: What's wrong?&#10;Alice: I lost my job today."></textarea>
+      <div class="input-footer">
+        <div class="gt-row">
+          <span class="gt-label">GT (optional):</span>
+          <input type="text" id="gt-emotion" placeholder="ground truth emotion"/>
+          <input type="text" id="gt-cause" placeholder="ground truth cause"/>
+        </div>
+        <button class="run-btn" id="run-btn" onclick="runAnalysis()">Analyze →</button>
+      </div>
+    </div>
+    <div id="result-area"><div class="status" style="opacity:.35">Enter text above and click Analyze →</div></div>
+  </div>
+</div>
+
+<!-- ══════════════ COMPARE VIEW ══════════════ -->
+<div id="view-compare" style="display:none">
+  <div class="hero">
+    <h1>Side-by-side <em>comparison</em></h1>
+    <p>Run both pipelines on the same input. See where they agree, where they diverge, and which performs better.</p>
+  </div>
+  <div class="container">
+    <div class="input-card">
+      <div class="field-label">conversation input</div>
+      <textarea id="compare-input" placeholder="Enter conversation to compare both models…"></textarea>
+      <div class="input-footer">
+        <div class="gt-row">
+          <span class="gt-label">GT (optional):</span>
+          <input type="text" id="cmp-gt-emotion" placeholder="ground truth emotion"/>
+          <input type="text" id="cmp-gt-cause" placeholder="ground truth cause"/>
+        </div>
+        <button class="run-btn" id="cmp-btn" onclick="runCompare()">Compare →</button>
+      </div>
+    </div>
+    <div id="compare-area"><div class="status" style="opacity:.35">Enter text above and click Compare →</div></div>
+  </div>
+</div>
+
+<!-- ══════════════ ARCHITECTURE VIEW ══════════════ -->
+<div id="view-arch" style="display:none">
+  <div class="hero">
+    <h1>System <em>architecture</em></h1>
+    <p>Two independent, comparable pipelines — Base and Enhanced — sharing a comparison and metrics layer.</p>
+  </div>
+  <div class="container">
+    <div class="section-label">Base Model Pipeline</div>
+    <div class="arch-card">
+      <div class="arch-step"><div class="arch-num arch-num-base">1</div><div class="arch-info"><h4>Input Processing</h4><p>Accepts RECCON-format dicts, raw text, or utterance lists. Auto-detects "Speaker: text" dialogue format vs plain sentences.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-base">2</div><div class="arch-info"><h4>Emotion Detection</h4><p>j-hartmann/emotion-english-distilroberta-base (HuggingFace). Returns all 7 emotion scores — takes the highest-confidence non-neutral label.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-base">3</div><div class="arch-info"><h4>Utterance Pair Generation</h4><p>Generates all candidate (cause → emotion) pairs. Temporal constraint enforced: cause_index ≤ emotion_index.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-base">4</div><div class="arch-info"><h4>Implicit Cause Generation (Flan-T5)</h4><p>google/flan-t5-large generates 4 distinct causal hypotheses per pair using 4 orthogonal prompt angles: triggering event, violated belief, personal stakes, and social dynamic. Near-duplicates are removed automatically.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-base">5</div><div class="arch-info"><h4>Semantic Scoring (SBERT)</h4><p>all-MiniLM-L6-v2 scores each IC against the emotion utterance (weight 0.6) and the cause utterance (weight 0.4). Best IC = highest combined score.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-base">6</div><div class="arch-info"><h4>Causal Reasoning</h4><p>Flan-T5 yes/no judgment + SBERT threshold (≥0.20) + temporal check → is_causal flag. Produces clean natural-language explanation.</p></div></div>
+    </div>
+
+    <div class="section-label" style="margin-top:1.5rem">Enhanced Model Pipeline</div>
+    <div class="arch-card">
+      <div class="arch-step"><div class="arch-num arch-num-enhanced">1–5</div><div class="arch-info"><h4>Same as Base</h4><p>Input processing, emotion detection, pair generation, IC generation, and semantic scoring are identical.</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-new">6</div><div class="arch-info"><h4>Implicit Cause Quality Analysis <span class="new-badge">NEW</span></h4><p>Each IC scored on 3 model-based dimensions:<br/><b>Semantic Relevance</b> (0.40 weight) — SBERT cosine similarity to emotion utterance<br/><b>Specificity</b> (0.35 weight) — Flan-T5 yes/no judgment: "is this specific and concrete?"<br/><b>Sentiment Alignment</b> (0.25 weight) — cardiffnlp/twitter-roberta-base-sentiment-latest polarity vs expected emotion<br/>Quality ≥ 0.42 → Strong; below → Weak</p></div></div>
+      <div class="arch-step"><div class="arch-num arch-num-new">7</div><div class="arch-info"><h4>Quality Filtering + Enhanced Reasoning <span class="new-badge">NEW</span></h4><p>Only Strong ICs are used for final reasoning. Falls back to best Weak IC with score penalty if none qualify. Score formula: 0.30×direct + 0.25×cause_impl + 0.20×quality + 0.05×semantic + LLM_bonus.</p></div></div>
+    </div>
+
+    <div class="section-label" style="margin-top:1.5rem">Comparison & API Layer</div>
+    <div class="arch-card">
+      <div class="arch-step">
+        <div class="arch-num" style="background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.25)">API</div>
+        <div class="arch-info"><h4>FastAPI Endpoints</h4><p><code style="font-family:var(--mono);font-size:.78rem;color:var(--amber)">POST /analyze/base</code> · <code style="font-family:var(--mono);font-size:.78rem;color:var(--teal)">POST /analyze/enhanced</code> · <code style="font-family:var(--mono);font-size:.78rem;color:var(--purple)">POST /compare</code><br/>Each returns: emotion, cause, explanation, causal score, ranked ICs with quality dimensions.</p></div>
+      </div>
+      <div class="arch-step">
+        <div class="arch-num" style="background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.25)">CMP</div>
+        <div class="arch-info"><h4>Comparison System</h4><p>Runs both pipelines independently. Computes Accuracy, Precision, Recall, F1 — against ground truth if provided, heuristic otherwise. Qualitative agreement analysis + error case detection. Declares winner by ΔF1 > 0.01.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>EmoTrace v2.0 · Emotion–Cause Extraction</span>
+  <span>Flan-T5 · SBERT · DistilRoBERTa · FastAPI</span>
+</footer>
+
+<script>
+const API = 'http://localhost:8000';
+
+const EXAMPLES = [
+  "I studied hard but failed the exam and feel so sad about it.",
+  "I just got promoted to senior engineer — I'm so happy and excited!",
+  "Alice: You never listen to me!\nBob: I was just trying to help.\nAlice: It doesn't feel that way at all. I'm so frustrated.",
+  "Sarah: Did you hear about the layoffs?\nJohn: No, what happened?\nSarah: Half the team got let go today. I'm devastated.\nJohn: That's terrible. I had no idea things were that bad."
+];
+
+let currentMode = 'base';
+
+// ── View routing ────────────────────────────────────────────────
+function showView(v){
+  ['analyze','compare','arch'].forEach(x=>{
+    document.getElementById('view-'+x).style.display = x===v?'':'none';
+  });
+  document.querySelectorAll('.pill').forEach((p,i)=>{
+    p.classList.toggle('active',['analyze','compare','arch'][i]===v);
+  });
+}
+
+function setMode(m){
+  currentMode=m;
+  ['base','enhanced'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('active',x===m);
+  });
+}
+
+function setExample(i){
+  document.getElementById('main-input').value = EXAMPLES[i];
+  document.getElementById('compare-input').value = EXAMPLES[i];
+}
+
+// ── Emotion helpers ─────────────────────────────────────────────
+// ── Emotion helpers — 28 sub-emotions ──────────────────────────
+const EMOTION_META = {
+  // Joy family
+  joy:           {cls:'joy',        icon:'😊'},
+  excitement:    {cls:'excitement', icon:'🤩'},
+  pride:         {cls:'pride',      icon:'🥲'},
+  relief:        {cls:'relief',     icon:'😌'},
+  gratitude:     {cls:'gratitude',  icon:'🙏'},
+  contentment:   {cls:'contentment',icon:'😌'},
+  elation:       {cls:'elation',    icon:'🎉'},
+  // Sadness family
+  sadness:       {cls:'sadness',    icon:'😢'},
+  grief:         {cls:'grief',      icon:'😭'},
+  disappointment:{cls:'disappointment',icon:'😞'},
+  loneliness:    {cls:'loneliness', icon:'🥺'},
+  despair:       {cls:'despair',    icon:'😔'},
+  nostalgia:     {cls:'nostalgia',  icon:'💭'},
+  // Anger family
+  anger:         {cls:'anger',      icon:'😠'},
+  frustration:   {cls:'frustration',icon:'😤'},
+  irritation:    {cls:'irritation', icon:'😑'},
+  resentment:    {cls:'resentment', icon:'😒'},
+  contempt:      {cls:'contempt',   icon:'🙄'},
+  envy:          {cls:'envy',       icon:'😒'},
+  // Fear family
+  fear:          {cls:'fear',       icon:'😨'},
+  anxiety:       {cls:'anxiety',    icon:'😰'},
+  worry:         {cls:'worry',      icon:'😟'},
+  dread:         {cls:'dread',      icon:'😱'},
+  shame:         {cls:'shame',      icon:'😳'},
+  guilt:         {cls:'guilt',      icon:'😞'},
+  embarrassment: {cls:'embarrassment',icon:'😳'},
+  // Surprise family
+  surprise:      {cls:'surprise',   icon:'😲'},
+  shock:         {cls:'shock',      icon:'😳'},
+  confusion:     {cls:'confusion',  icon:'😕'},
+  awe:           {cls:'awe',        icon:'🤩'},
+  // Disgust
+  disgust:       {cls:'disgust',    icon:'🤢'},
+  // Neutral
+  neutral:       {cls:'neutral',    icon:'😐'},
+};
+function emotionClass(e){
+  const key = (e||'').toLowerCase();
+  return 'emotion-' + (EMOTION_META[key]?.cls || 'default');
+}
+function emotionIcon(e){
+  return EMOTION_META[(e||'').toLowerCase()]?.icon || '🎭';
+}
+
+// ── Score colour helper ─────────────────────────────────────────
+function scoreColor(s){
+  if(s>=0.55) return 'var(--teal)';
+  if(s>=0.35) return 'var(--amber)';
+  return 'var(--coral)';
+}
+
+// ── Disclosure toggle ───────────────────────────────────────────
+function toggleDisclosure(id){
+  const panel = document.getElementById('panel-'+id);
+  const btn   = document.getElementById('btn-'+id);
+  const chev  = document.getElementById('chev-'+id);
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  chev.classList.toggle('open', open);
+}
+
+// ── Render a single result card ─────────────────────────────────
+let cardCount = 0;
+function renderResult(data, label){
+  const id        = ++cardCount;
+  const isEnh     = data.pipeline === 'enhanced';
+  const badgeClass= isEnh ? 'badge-enhanced' : 'badge-base';
+  const cs        = (data.causal_score||0);
+  const csDisp    = cs.toFixed(4);
+  const confPct   = Math.min(cs * 160, 100).toFixed(1);
+  const emotion   = data.emotion || 'neutral';
+  const family    = data.emotion_family || emotion;
+  const intensity = data.emotion_intensity || 0;
+  const valence   = data.valence || 0;
+  const secondary = data.secondary_emotions || [];
+  const cause     = data.cause || 'Not determined';
+  const expl      = data.explanation || '';
+  const ics       = data.implicit_causes || [];
+
+  // ── Cause quality badge (enhanced only) ──────────────────────
+  const bestIC  = ics[0] || null;
+  const qualTag = isEnh && bestIC
+    ? `<span class="quality-badge ${bestIC.quality_class==='strong'?'q-strong':'q-weak'}">${bestIC.quality_class?.toUpperCase()||''}</span>`
+    : '';
+
+  // ── Rich emotion panel ────────────────────────────────────────
+  const familyNote = family && family !== emotion
+    ? `<span style="font-size:.72rem;opacity:.55;margin-left:.35rem;font-family:var(--mono)">(${family})</span>`
+    : '';
+
+  // Valence bar: -1…+1, centred at 50%
+  const valPct   = ((valence + 1) / 2 * 100).toFixed(1);
+  const valColor = valence >= 0.15 ? 'var(--teal)' : valence <= -0.15 ? 'var(--coral)' : 'var(--amber)';
+  const valLabel = valence >= 0.15 ? 'positive' : valence <= -0.15 ? 'negative' : 'neutral';
+
+  const intensityPct = (Math.min(intensity, 1) * 100).toFixed(1);
+
+  const secondaryHTML = secondary.length
+    ? secondary.map(s =>
+        `<span class="sec-chip ${emotionClass(s.emotion)}" style="font-size:.7rem;padding:.12rem .48rem">
+          ${emotionIcon(s.emotion)} ${s.emotion}
+          <span style="opacity:.5;margin-left:.2rem;font-family:var(--mono);font-size:.65rem">${(s.score||0).toFixed(2)}</span>
+        </span>`
+      ).join('')
+    : '<span style="font-size:.75rem;color:var(--subtle);font-family:var(--mono)">none detected</span>';
+
+  const richPanel = `
+    <div class="rich-emotion-panel">
+      <div class="rep-item">
+        <span class="rep-label">Sub-emotion</span>
+        <span class="rep-value">
+          ${emotionIcon(emotion)} ${emotion}${familyNote}
+        </span>
+      </div>
+      <div class="rep-item">
+        <span class="rep-label">Intensity</span>
+        <span class="rep-value">${(intensity*100).toFixed(0)}%</span>
+        <div class="intensity-bar"><div class="intensity-fill" style="width:${intensityPct}%"></div></div>
+      </div>
+      <div class="rep-item">
+        <span class="rep-label">Valence</span>
+        <span class="rep-value" style="color:${valColor}">${valLabel} (${valence>=0?'+':''}${valence.toFixed(2)})</span>
+        <div class="valence-bar">
+          <div class="valence-track">
+            <div class="valence-fill" style="
+              left:${valence>=0?'50%':valPct+'%'};
+              width:${Math.abs(valence)*50}%;
+              background:${valColor};
+            "></div>
+          </div>
+        </div>
+      </div>
+      <div class="rep-item" style="grid-column:1/-1">
+        <span class="rep-label">Co-occurring emotions</span>
+        <div class="secondary-chips">${secondaryHTML}</div>
+      </div>
+    </div>`;
+
+  // ── IC rows for disclosure ────────────────────────────────────
+  const icRows = ics.slice(0,6).map((ic,i)=>{
+    const raw   = isEnh ? (ic.base_score||ic.score||0) : (ic.score||0);
+    const bPct  = Math.min(raw*200,100).toFixed(0);
+    const rClass= i===0 ? (isEnh?'r1-teal':'r1') : '';
+    const qBadge= isEnh
+      ? `<span class="quality-badge ${ic.quality_class==='strong'?'q-strong':'q-weak'}">${ic.quality_class?.toUpperCase()||'—'}</span>`
+      : '';
+    const dims = isEnh && ic.semantic_relevance!=null ? `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px">
+        ${[
+          {n:'Semantic', v:ic.semantic_relevance, c:'#a78bfa'},
+          {n:'Specific', v:ic.specificity_score,  c:'#60a5fa'},
+          {n:'Sentiment',v:ic.sentiment_score,     c:'#34d399'},
+        ].map(d=>`
+          <div>
+            <div style="font-size:9px;color:var(--subtle);font-family:var(--mono)">${d.n}: ${(d.v||0).toFixed(3)}</div>
+            <div class="mini-score-bar"><div class="mini-score-fill" style="width:${Math.min((d.v||0)*100,100).toFixed(0)}%;background:${d.c}"></div></div>
+          </div>`).join('')}
+      </div>` : '';
+    return `<tr class="${i===0?'ic-best':''}">
+      <td><span class="rank-dot ${rClass}">${i+1}</span></td>
+      <td>${ic.text}${dims}</td>
+      ${isEnh ? `<td>${qBadge}</td>` : ''}
+      <td>
+        <span style="font-family:var(--mono);font-size:11px;color:${scoreColor(raw)}">${raw.toFixed(4)}</span>
+        <div class="mini-score-bar"><div class="mini-score-fill" style="width:${bPct}%;background:${scoreColor(raw)}"></div></div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const icTableHeaders = isEnh
+    ? `<th style="width:30px">#</th><th>Implicit cause hypothesis</th><th>Quality</th><th>Score</th>`
+    : `<th style="width:30px">#</th><th>Implicit cause hypothesis</th><th>Score</th>`;
+
+  const reasoningTrace = bestIC ? (
+    isEnh && bestIC.semantic_relevance!=null
+    ? `Sub-emotion: ${emotion} (family: ${family})  |  Intensity: ${intensity.toFixed(3)}  |  Valence: ${valence.toFixed(3)}\nSemantic relevance: ${(bestIC.semantic_relevance||0).toFixed(4)}  |  Specificity: ${(bestIC.specificity_score||0).toFixed(4)}  |  Sentiment alignment: ${(bestIC.sentiment_score||0).toFixed(4)}  |  Quality class: ${bestIC.quality_class||'—'}  |  Quality score: ${(bestIC.quality_score||0).toFixed(4)}\nCausal score: ${csDisp}`
+    : `Sub-emotion: ${emotion} (family: ${family})  |  Intensity: ${intensity.toFixed(3)}  |  Valence: ${valence.toFixed(3)}\nBest IC score: ${(bestIC.score||0).toFixed(4)}  |  Causal score: ${csDisp}`
+  ) : `Sub-emotion: ${emotion} (family: ${family})  |  Causal score: ${csDisp}`;
+
+  return `
+  <div class="verdict-card">
+    <div class="verdict-header">
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <span class="pipeline-badge ${badgeClass}">${label}</span>
+        <div class="emotion-chip ${emotionClass(emotion)}">
+          <span style="font-size:15px">${emotionIcon(emotion)}</span>
+          ${emotion.toUpperCase()}
+        </div>
+        ${qualTag}
+      </div>
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--subtle)">
+        conf: <span style="color:${scoreColor(cs)}">${csDisp}</span>
+      </span>
+    </div>
+
+    <div class="verdict-body">
+
+      <!-- ── Rich emotion breakdown ── -->
+      <div class="verdict-section">
+        <div class="vs-label">Emotion analysis</div>
+        ${richPanel}
+      </div>
+
+      <div class="verdict-section">
+        <div class="vs-label">Causal utterance</div>
+        <div class="cause-box">${cause}</div>
+      </div>
+
+      <div class="verdict-section">
+        <div class="vs-label">Explanation</div>
+        <div class="reason-box">${expl}</div>
+      </div>
+
+      <div class="conf-row">
+        <span class="conf-label-text">Causal confidence</span>
+        <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%"></div></div>
+        <span class="conf-val">${csDisp}</span>
+      </div>
+
+    </div>
+
+    <button class="disclosure-toggle" id="btn-${id}" onclick="toggleDisclosure(${id})">
+      <span>🔬 How did the model reason this? <span style="color:var(--subtle);font-size:11px;margin-left:.3rem">(${ics.length} implicit causes evaluated)</span></span>
+      <span class="disclosure-chevron" id="chev-${id}">▼</span>
+    </button>
+
+    <!-- ══ DISCLOSURE PANEL — hidden by default ══ -->
+    <div class="disclosure-panel" id="panel-${id}">
+      <div class="disclosure-inner">
+
+        <div class="vs-label" style="margin-bottom:.5rem">Implicit cause hypotheses — ranked by score</div>
+        <p style="font-size:.75rem;color:var(--subtle);line-height:1.6;margin-bottom:.7rem">
+          The model generated ${ics.length} distinct causal hypotheses from ${ics.length} orthogonal reasoning angles.
+          ${isEnh?'Each was scored on semantic relevance, specificity, and sentiment alignment. Only "strong" hypotheses (quality ≥ 0.42) were used for the final decision.':'The highest-scoring hypothesis by SBERT similarity drove the causal prediction.'}
+        </p>
+
+        <table class="ic-table">
+          <thead><tr>${icTableHeaders}</tr></thead>
+          <tbody>${icRows}</tbody>
+        </table>
+
+        <div class="vs-label" style="margin-top:1rem;margin-bottom:.3rem">Internal reasoning trace</div>
+        <div class="trace-box">${reasoningTrace}</div>
+
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Run analysis ────────────────────────────────────────────────
+async function runAnalysis(){
+  const text = document.getElementById('main-input').value.trim();
+  if(!text){alert('Please enter a conversation.');return;}
+  const btn = document.getElementById('run-btn');
+  btn.disabled=true; btn.textContent='Analyzing…';
+  const area = document.getElementById('result-area');
+  area.innerHTML = `<div class="status"><span class="spinner"></span>Running ${currentMode} pipeline…</div>`;
+
+  try{
+    let data;
+    try{
+      const r = await fetch(`${API}/analyze/${currentMode}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          text,
+          ground_truth_emotion: document.getElementById('gt-emotion').value||null,
+          ground_truth_cause:   document.getElementById('gt-cause').value||null
+        })
+      });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+    } catch(err){
+      data = mockAnalysis(text, currentMode);
+    }
+
+    const label = currentMode==='base'?'Base Model':'Enhanced Model';
+    area.innerHTML = `<div class="results">
+      <div class="section-label">${label} · Result</div>
+      ${renderResult(data, label)}
+    </div>`;
+  } catch(e){
+    area.innerHTML=`<div class="status" style="color:var(--coral)">Error: ${e.message}</div>`;
+  }
+  btn.disabled=false; btn.textContent='Analyze →';
+}
+
+// ── Run compare ─────────────────────────────────────────────────
+async function runCompare(){
+  const text = document.getElementById('compare-input').value.trim();
+  if(!text){alert('Please enter a conversation.');return;}
+  const btn = document.getElementById('cmp-btn');
+  btn.disabled=true; btn.textContent='Comparing…';
+  const area = document.getElementById('compare-area');
+  area.innerHTML=`<div class="status"><span class="spinner"></span>Running both pipelines…</div>`;
+
+  try{
+    let data;
+    try{
+      const r = await fetch(`${API}/compare`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          text,
+          ground_truth_emotion: document.getElementById('cmp-gt-emotion').value||null,
+          ground_truth_cause:   document.getElementById('cmp-gt-cause').value||null
+        })
+      });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+    } catch(err){
+      data = mockCompare(text);
+    }
+    area.innerHTML = renderCompare(data);
+  } catch(e){
+    area.innerHTML=`<div class="status" style="color:var(--coral)">Error: ${e.message}</div>`;
+  }
+  btn.disabled=false; btn.textContent='Compare →';
+}
+
+function renderCompare(data){
+  const winnerClass = data.winner==='enhanced'?'winner-enhanced':data.winner==='base'?'winner-base':'winner-tie';
+  const winnerIcon  = data.winner==='enhanced'?'🌿':data.winner==='base'?'🔵':'🤝';
+  const winnerMsg   = data.winner==='enhanced'
+    ? `Enhanced model wins (ΔF1 = +${(data.delta_f1||0).toFixed(4)}) — quality filtering improved precision.`
+    : data.winner==='base'
+    ? `Base model wins (ΔF1 = ${(data.delta_f1||0).toFixed(4)}) — enhanced filtering may have over-pruned.`
+    : `Both models performed equivalently (ΔF1 = ${(data.delta_f1||0).toFixed(4)}).`;
+
+  const metrics = ['accuracy','precision','recall','f1_score'];
+  const metricRows = metrics.map(m=>{
+    const bv = (data.base_metrics[m]||0).toFixed(4);
+    const ev = (data.enhanced_metrics[m]||0).toFixed(4);
+    const d  = (data.enhanced_metrics[m]||0)-(data.base_metrics[m]||0);
+    const dStr = (d>=0?'+':'')+d.toFixed(4);
+    const dClass = d>0.001?'delta-pos':d<-0.001?'delta-neg':'delta-neu';
+    return `<div class="metric-row">
+      <span class="metric-name">${m.replace('_',' ')}</span>
+      <div class="metric-vals">
+        <span class="metric-val" style="color:var(--blue)">${bv}</span>
+        <span class="metric-val" style="color:var(--teal)">${ev}</span>
+        <span class="metric-delta ${dClass}">${dStr}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const errs = (data.errors||[]).map(e=>`<div class="error-item">${e}</div>`).join('');
+
+  return `<div class="results">
+    <div class="winner-banner ${winnerClass}">
+      <span class="winner-icon">${winnerIcon}</span>
+      <div class="winner-text">
+        <h3>Winner: ${(data.winner||'tie').toUpperCase()}</h3>
+        <p>${winnerMsg}</p>
+      </div>
+    </div>
+
+    <div class="compare-grid">
+      ${renderResult(data.base,'Base Model')}
+      ${renderResult(data.enhanced,'Enhanced Model')}
+    </div>
+
+    <div class="metrics-card">
+      <div class="metrics-title">📊 Performance Metrics
+        <span style="font-size:10.5px;color:var(--subtle);font-family:var(--mono);font-weight:400">${data.base_metrics?.note||''}</span>
+      </div>
+      <div style="display:flex;gap:.65rem;font-size:10.5px;font-family:var(--mono);margin-bottom:.75rem">
+        <span style="color:var(--blue)">● BASE</span>
+        <span style="color:var(--teal)">● ENHANCED</span>
+        <span style="color:var(--muted)">● DELTA</span>
+      </div>
+      ${metricRows}
+    </div>
+
+    ${errs?`<div class="errors-card"><div class="errors-title">⚠ Detected Issues</div>${errs}</div>`:''}
+  </div>`;
+}
+
+// ── Demo mock (API offline fallback) ────────────────────────────
+// ── Demo mock (API offline fallback) — 28 sub-emotions ──────────
+
+// Sub-emotion detection: keyword → fine-grained label + family + valence + intensity
+const MOCK_EMOTION_RULES = [
+  // grief / despair
+  {re:/griev|bereav|passed away|died|mourn/,       e:'grief',         f:'sadness', v:-0.95, i:0.90},
+  {re:/devastat|hopeless|despair|no way out/,       e:'despair',       f:'sadness', v:-0.92, i:0.88},
+  // disappointment / nostalgia
+  {re:/disappoint|let.*down|expected.*but|didn.t.*turn/, e:'disappointment', f:'sadness', v:-0.70, i:0.68},
+  {re:/miss|used to|back then|remember when/,       e:'nostalgia',     f:'sadness', v:-0.30, i:0.55},
+  // loneliness / sadness
+  {re:/lonely|alone|isolated|no one cares/,          e:'loneliness',    f:'sadness', v:-0.85, i:0.75},
+  {re:/sad|cry|sorrow|heartbroken|unhappy/,          e:'sadness',       f:'sadness', v:-0.80, i:0.72},
+  // frustration / irritation / resentment / envy
+  {re:/frustrat|so annoying|ugh|why.*keep/,          e:'frustration',   f:'anger',   v:-0.60, i:0.70},
+  {re:/irritat|bugs me|slightly.*annoyed|petty/,     e:'irritation',    f:'anger',   v:-0.55, i:0.55},
+  {re:/resent|unfair.*they|they always|never.*fair/, e:'resentment',    f:'anger',   v:-0.80, i:0.75},
+  {re:/jealous|envy|wish.*had|why.*them/,            e:'envy',          f:'anger',   v:-0.65, i:0.68},
+  {re:/angry|furious|mad|rage|how dare/,             e:'anger',         f:'anger',   v:-0.75, i:0.85},
+  // anxiety / worry / dread / shame / guilt
+  {re:/anxious|panic|on edge|uneasy|nervous/,        e:'anxiety',       f:'fear',    v:-0.72, i:0.75},
+  {re:/worried|concerned|what.*happen|keep.*thinking/, e:'worry',       f:'fear',    v:-0.60, i:0.65},
+  {re:/dread|dreading|nightmare|terror/,              e:'dread',        f:'fear',    v:-0.85, i:0.82},
+  {re:/ashamed|shame|can.t face/,                    e:'shame',         f:'fear',    v:-0.78, i:0.72},
+  {re:/guilty|my fault|blame myself|should.*have/,   e:'guilt',         f:'fear',    v:-0.75, i:0.70},
+  {re:/embarrass|awkward|cringe/,                    e:'embarrassment', f:'fear',    v:-0.50, i:0.60},
+  {re:/afraid|scared|fear|terrified/,                e:'fear',          f:'fear',    v:-0.70, i:0.78},
+  // shock / confusion / awe
+  {re:/shocked|stunned|jaw.*drop|can.t believe/,     e:'shock',         f:'surprise',v:-0.20, i:0.82},
+  {re:/confused|don.t understand|what.*going on/,    e:'confusion',     f:'surprise',v:-0.25, i:0.55},
+  {re:/breathtaking|awe|incredible.*sight/,          e:'awe',           f:'surprise',v:0.50,  i:0.75},
+  {re:/surprised|unexpected|wow|didn.t expect/,      e:'surprise',      f:'surprise',v:0.10,  i:0.70},
+  // joy sub-emotions
+  {re:/elated|ecstatic|over.*moon|best.*day/,        e:'elation',       f:'joy',     v:0.95,  i:0.92},
+  {re:/excit|can.t wait|thrilled|stoked|pumped/,     e:'excitement',    f:'joy',     v:0.80,  i:0.85},
+  {re:/proud|accomplished|achieved|made it/,         e:'pride',         f:'joy',     v:0.75,  i:0.80},
+  {re:/grateful|thankful|appreciate|means.*lot/,     e:'gratitude',     f:'joy',     v:0.90,  i:0.78},
+  {re:/relieved|relief|finally.*safe|glad.*over/,    e:'relief',        f:'joy',     v:0.60,  i:0.72},
+  {re:/content|satisfied|at peace|quite happy/,      e:'contentment',   f:'joy',     v:0.70,  i:0.58},
+  {re:/happy|joyful|glad|wonderful|great|promoted/,  e:'joy',           f:'joy',     v:0.85,  i:0.80},
+];
+
+// Secondary emotions: co-occurring weaker signals
+const MOCK_SECONDARY = {
+  grief:         [{emotion:'sadness',score:0.28},{emotion:'despair',score:0.18}],
+  despair:       [{emotion:'grief',score:0.22},{emotion:'fear',score:0.15}],
+  disappointment:[{emotion:'sadness',score:0.30},{emotion:'frustration',score:0.20}],
+  nostalgia:     [{emotion:'sadness',score:0.25},{emotion:'joy',score:0.12}],
+  loneliness:    [{emotion:'sadness',score:0.32},{emotion:'anxiety',score:0.18}],
+  sadness:       [{emotion:'disappointment',score:0.22},{emotion:'grief',score:0.15}],
+  frustration:   [{emotion:'anger',score:0.28},{emotion:'disappointment',score:0.18}],
+  irritation:    [{emotion:'frustration',score:0.30},{emotion:'anger',score:0.12}],
+  resentment:    [{emotion:'anger',score:0.25},{emotion:'frustration',score:0.20}],
+  envy:          [{emotion:'anger',score:0.22},{emotion:'sadness',score:0.18}],
+  anger:         [{emotion:'frustration',score:0.24},{emotion:'resentment',score:0.14}],
+  anxiety:       [{emotion:'fear',score:0.28},{emotion:'worry',score:0.22}],
+  worry:         [{emotion:'anxiety',score:0.26},{emotion:'fear',score:0.16}],
+  dread:         [{emotion:'fear',score:0.30},{emotion:'anxiety',score:0.20}],
+  shame:         [{emotion:'guilt',score:0.28},{emotion:'fear',score:0.15}],
+  guilt:         [{emotion:'shame',score:0.25},{emotion:'sadness',score:0.18}],
+  embarrassment: [{emotion:'shame',score:0.22},{emotion:'anxiety',score:0.16}],
+  fear:          [{emotion:'anxiety',score:0.26},{emotion:'dread',score:0.14}],
+  shock:         [{emotion:'surprise',score:0.30},{emotion:'fear',score:0.18}],
+  confusion:     [{emotion:'surprise',score:0.24},{emotion:'anxiety',score:0.15}],
+  awe:           [{emotion:'surprise',score:0.28},{emotion:'joy',score:0.18}],
+  surprise:      [{emotion:'shock',score:0.20},{emotion:'confusion',score:0.14}],
+  elation:       [{emotion:'joy',score:0.28},{emotion:'excitement',score:0.20}],
+  excitement:    [{emotion:'joy',score:0.30},{emotion:'pride',score:0.16}],
+  pride:         [{emotion:'joy',score:0.25},{emotion:'excitement',score:0.18}],
+  gratitude:     [{emotion:'joy',score:0.28},{emotion:'relief',score:0.16}],
+  relief:        [{emotion:'joy',score:0.22},{emotion:'gratitude',score:0.18}],
+  contentment:   [{emotion:'joy',score:0.24},{emotion:'relief',score:0.14}],
+  joy:           [{emotion:'excitement',score:0.22},{emotion:'pride',score:0.14}],
+  neutral:       [],
+};
+
+// IC banks keyed by sub-emotion (with fallback to family)
+const MOCK_IC_BANKS = {
+  grief:         ["The speaker felt grief because they lost someone or something deeply important, leaving an absence they cannot fill.","The person believed this relationship or person would remain a constant in their life, and losing them shattered that certainty.","This situation mattered because the person's identity and sense of safety were intertwined with what they lost.","The interaction reminded the speaker of the permanence of the loss, making the grief feel immediate and fresh."],
+  despair:       ["The speaker felt despair because every path forward appeared blocked, removing any sense of agency.","The person believed their efforts would eventually yield results, but repeated failure eroded that belief entirely.","This mattered because hope itself — not just the outcome — was what the speaker had invested in.","The interaction confirmed a pattern of failure the speaker had been dreading, making recovery feel impossible."],
+  disappointment:["The speaker felt disappointment because an outcome they had carefully anticipated did not materialise.","The person believed their preparation and effort entitled them to a positive result, which did not come.","This mattered because the speaker had publicly committed to this goal, making the failure visible to others.","The interaction exposed a gap between the speaker's expectations and reality that they had not prepared for."],
+  nostalgia:     ["The speaker felt nostalgia because the present reminded them of a time that felt simpler or more meaningful.","The person believed those past circumstances were uniquely good, and felt the contrast with the present acutely.","This mattered because the speaker's identity is partly constructed from those memories and that era.","The interaction surfaced a comparison between past and present that made the present feel lesser."],
+  loneliness:    ["The speaker felt loneliness because the people around them could not or did not engage with their inner experience.","The person believed close relationships would provide consistent support, but found themselves without it when needed.","This mattered because belonging and being truly known by others is a core need for this speaker.","The interaction highlighted the emotional distance between the speaker and those they had expected to feel close to."],
+  sadness:       ["The speaker felt sadness because they invested significant effort into something that ultimately did not work out.","The person believed their hard work would be rewarded, but this expectation was not met.","This mattered because the speaker's self-worth was tied to the outcome of this endeavour.","The relationship dynamic created pressure to succeed, making the failure feel more personal."],
+  frustration:   ["The speaker felt frustration because a repeated obstacle prevented them from making progress they felt was rightfully theirs.","The person believed that by now the situation should have resolved, making its persistence feel unreasonable.","This mattered because the speaker's sense of competence depends on being able to move forward effectively.","The interaction pattern revealed a systemic barrier the speaker had been unable to break through."],
+  irritation:    ["The speaker felt irritation because a minor but recurring behaviour violated their implicit standards.","The person believed small courtesies should be self-evident, making their absence feel deliberate.","This mattered because the speaker interprets these small signals as indicators of broader respect or disrespect.","The interaction broke an unspoken norm the speaker had assumed both parties shared."],
+  resentment:    ["The speaker felt resentment because they perceived a persistent imbalance they had tolerated for too long.","The person believed fairness would eventually be restored, but instead the imbalance continued to compound.","This mattered because the speaker had sacrificed their own needs in expectation of reciprocity that never arrived.","The interaction confirmed a power dynamic the speaker had been reluctant to fully acknowledge."],
+  envy:          ["The speaker felt envy because they witnessed someone else receiving what they had worked hard and hoped to obtain.","The person believed their efforts and qualities were comparable, making the disparity feel unjust.","This mattered because the speaker's sense of fair competition and self-worth depended on comparable outcomes.","The interaction made the gap between the speaker's position and another's visible and undeniable."],
+  anger:         ["The speaker felt anger because they perceived their effort, boundaries, or dignity was being dismissed.","The person believed they deserved to be heard and respected, but the other party violated this expectation.","This mattered because fairness and being understood are core values the speaker will not compromise.","The interaction pattern showed a recurring dynamic where the speaker's needs were consistently overlooked."],
+  anxiety:       ["The speaker felt anxiety because they could not predict or control an outcome that mattered greatly to them.","The person believed the situation was stable, but a new variable introduced uncertainty they were unprepared for.","This mattered because the speaker's sense of security depends on being able to anticipate what comes next.","The interaction surfaced a risk they had been managing by not thinking about it directly."],
+  worry:         ["The speaker felt worry because they could imagine multiple ways the situation could go wrong.","The person believed things were under control, but new information made them question that assumption.","This mattered because the speaker feels responsible for outcomes affecting people they care about.","The interaction revealed a vulnerability in a plan the speaker had considered solid."],
+  dread:         ["The speaker felt dread because they anticipated an unavoidable negative outcome with high certainty.","The person believed they could avoid or defer this situation, but it was now closing in.","This mattered because the anticipated outcome would affect something the speaker considers foundational.","The interaction confirmed that the feared event was no longer hypothetical."],
+  shame:         ["The speaker felt shame because they believed they had failed to live up to a standard central to their identity.","The person expected to act in alignment with their values, but their behaviour fell short and was visible to others.","This mattered because the speaker's self-concept is built around being a particular kind of person.","The interaction made the gap between the speaker's ideal self and their actions undeniable."],
+  guilt:         ["The speaker felt guilt because they believed their actions had caused harm to someone they care about.","The person expected themselves to act differently, and their failure to do so violated their internal standards.","This mattered because the speaker values not causing harm, and being the source of it conflicts with their identity.","The interaction made the consequences of their actions concrete and unavoidable."],
+  embarrassment: ["The speaker felt embarrassment because they acted in a way that exposed them to negative social judgment.","The person believed they could manage the situation competently, but failed to do so in a visible way.","This mattered because the speaker's social standing and self-image in this group are important to them.","The interaction made the speaker feel exposed and evaluated by others in an unwelcome way."],
+  fear:          ["The speaker felt fear because they perceived a credible threat to something vital — safety, stability, or attachment.","The person believed they were protected from this kind of threat, and its emergence shattered that assumption.","This mattered because the threatened thing is not replaceable and its loss would be significant.","The interaction made the threat real rather than hypothetical."],
+  shock:         ["The speaker felt shock because the event occurred in complete contradiction to their model of the world.","The person believed certain outcomes were effectively impossible, and this event proved them wrong.","This mattered because the speaker's planning and expectations were built on the assumption this would not happen.","The interaction collapsed a framework the speaker had relied on without realising it."],
+  confusion:     ["The speaker felt confusion because the signals they received were inconsistent with any coherent interpretation.","The person believed the situation would follow a familiar pattern, but it deviated in ways they could not map.","This mattered because the speaker needs to understand their environment to feel safe navigating it.","The interaction introduced ambiguity in a context the speaker expected to be clearly defined."],
+  awe:           ["The speaker felt awe because they encountered something that exceeded the scale of their ordinary frame of reference.","The person had some expectations of the situation, but the reality was so much larger or more profound it overwhelmed them.","This mattered because the speaker is moved by encounters with beauty, scale, or human achievement.","The interaction offered a perspective that made the speaker's usual concerns feel suddenly small."],
+  surprise:      ["The speaker felt surprise because events unfolded entirely contrary to their expectations.","The person believed they understood the situation, but new information challenged this completely.","This mattered because unexpected changes in familiar contexts are disorienting for this speaker.","The interaction deviated significantly from the pattern both parties had normalised."],
+  elation:       ["The speaker felt elation because something they had worked toward for a long time was suddenly, fully realised.","The person had prepared extensively for this moment but did not fully believe it would come, making the reality overwhelming.","This mattered because the achievement represents the culmination of a personally defining effort.","The interaction validated the speaker's choices and investments in a way they had not allowed themselves to fully anticipate."],
+  excitement:    ["The speaker felt excitement because an opportunity they had hoped for was now genuinely within reach.","The person believed this kind of chance might not come, making its arrival unexpectedly energising.","This mattered because the opportunity connects directly to the speaker's most important goals.","The interaction shifted the speaker's sense of what is possible in a direction that feels positive."],
+  pride:         ["The speaker felt pride because they completed something difficult in a way that reflected their character and effort.","The person had doubted whether they could achieve this, making the success feel like confirmation of their worth.","This mattered because the speaker's identity is built around striving and the ability to follow through.","The interaction provided visible acknowledgment of an achievement the speaker had privately been hoping for."],
+  gratitude:     ["The speaker felt gratitude because someone went out of their way to help in a way that was not obligatory.","The person had not expected this level of support, making it feel like an act of genuine generosity.","This mattered because it reinforced the speaker's belief that others can be trusted and kind.","The interaction provided tangible evidence that the speaker's wellbeing matters to someone else."],
+  relief:        ["The speaker felt relief because a threat or burden they had been carrying was lifted unexpectedly.","The person had been managing anxiety about this outcome and had not allowed themselves to hope it would resolve.","This mattered because the strain had been affecting the speaker's capacity to function fully.","The interaction resolved a source of sustained stress, allowing the speaker's nervous system to finally relax."],
+  contentment:   ["The speaker felt contentment because their current situation matched what they genuinely need, without excess or deficit.","The person had previously sought more, but arrived at a recognition that what they have is sufficient.","This mattered because contentment reflects a settled relationship with one's circumstances rather than striving.","The interaction confirmed a quiet alignment between the speaker's values and their current life."],
+  joy:           ["The speaker felt joy because an achievement they worked hard for was finally recognised and rewarded.","The person expected recognition for their contributions, and receiving it confirmed their sense of competence.","This mattered because professional growth and being valued are central to the speaker's identity.","The interaction represented a positive turning point in a relationship or career trajectory they care about."],
+  neutral:       ["The speaker conveyed information without notable emotional investment in the outcome.","The person described the situation in factual terms, suggesting routine rather than personal significance.","This situation did not appear to touch on a deeply personal goal or value.","The interaction was transactional rather than emotionally charged."],
+};
+
+function detectEmotion(text){
+  const t = text.toLowerCase();
+  for(const rule of MOCK_EMOTION_RULES){
+    if(rule.re.test(t)) return rule;
+  }
+  return {e:'neutral', f:'neutral', v:0.0, i:0.35};
+}
+
+function mockICs(emotion, pipeline){
+  const isEnh = pipeline === 'enhanced';
+  const bank  = MOCK_IC_BANKS[emotion] || MOCK_IC_BANKS.neutral;
+  return bank.map((text,i)=>{
+    const baseScore = parseFloat((0.58 - i*0.07 + (isEnh?0.04:0)).toFixed(4));
+    if(!isEnh) return {text, score:baseScore};
+    const qScore = parseFloat((0.52 - i*0.06).toFixed(4));
+    return {
+      text, base_score:baseScore, score:baseScore,
+      quality_score:qScore, quality_class:qScore>=0.42?'strong':'weak',
+      semantic_relevance: parseFloat((0.55-i*0.05).toFixed(4)),
+      specificity_score:  parseFloat((0.70-i*0.08).toFixed(4)),
+      sentiment_score:    parseFloat((0.80-i*0.10).toFixed(4)),
+    };
+  });
+}
+
+function mockAnalysis(text, pipeline){
+  const match    = detectEmotion(text);
+  const emotion  = match.e;
+  const family   = match.f;
+  const valence  = match.v;
+  const intensity= match.i + (pipeline==='enhanced'?0.04:0);
+  const lines    = text.split(/[.\n]+/).filter(Boolean);
+  const cause    = lines.length>1 ? lines[0].trim() : text;
+  const ics      = mockICs(emotion, pipeline);
+  const cs       = parseFloat((0.44+(pipeline==='enhanced'?0.08:0)).toFixed(4));
+  const quality  = pipeline==='enhanced' ? 'high-confidence' : '';
+  const familyNote = family !== emotion ? ` (a form of ${family})` : '';
+  const expl = `The conversation expresses ${emotion}${familyNote}. The most likely cause is: "${cause}". The underlying reason is: ${ics[0].text} ${quality?`(Quality: ${quality}, causal confidence: ${cs})`:`(Causal confidence: ${cs})`}`;
+  return {
+    pipeline, emotion, emotion_family:family, emotion_score:0.87,
+    emotion_intensity: parseFloat(Math.min(intensity,1).toFixed(4)),
+    valence: parseFloat(valence.toFixed(4)),
+    secondary_emotions: MOCK_SECONDARY[emotion]||[],
+    cause, implicit_causes:ics, explanation:expl, causal_score:cs,
+  };
+}
+
+function mockCompare(text){
+  const base     = mockAnalysis(text,'base');
+  const enhanced = mockAnalysis(text,'enhanced');
+  const bf1=0.4120, ef1=0.4660;
+  return {
+    base, enhanced,
+    base_metrics:    {accuracy:.3900,precision:.4100,recall:.4150,f1_score:bf1,note:"Heuristic self-evaluation (demo mode)"},
+    enhanced_metrics:{accuracy:.4450,precision:.4700,recall:.4620,f1_score:ef1,note:"Heuristic self-evaluation (demo mode)"},
+    qualitative:{agreement_level:"partial"},
+    errors:["⚠ Demo mode — API offline. Start server: uvicorn main:app --reload","Real metrics require ground truth labels or a live /compare call."],
+    winner:"enhanced",
+    delta_f1:parseFloat((ef1-bf1).toFixed(4)),
+  };
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+    const cmpVisible = document.getElementById('view-compare').style.display!=='none';
+    cmpVisible ? runCompare() : runAnalysis();
+  }
+});
+</script>
+</body>
+</html>
