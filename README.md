@@ -16,7 +16,6 @@ emotion_project/
 │   └── main.py              ← FastAPI server
 ├── frontend/
 │   └── index.html           ← Full UI (works standalone + with API)
-├── demo.py                  ← CLI demo runner
 ├── requirements.txt
 └── README.md
 ```
@@ -35,15 +34,7 @@ pip install -r requirements.txt
 python -m textblob.download_corpora
 ```
 
-### 2. Run CLI demo (no server needed)
-
-```bash
-python demo.py
-# Or with custom text:
-python demo.py --text "I worked hard but got rejected and feel awful"
-```
-
-### 3. Start FastAPI backend
+### 2. Start FastAPI backend
 
 ```bash
 cd backend
@@ -51,7 +42,7 @@ uvicorn main:app --reload --port 8000
 # API docs: http://localhost:8000/docs
 ```
 
-### 4. Open the frontend
+### 3. Open the frontend
 
 ```bash
 # Simply open in browser:
